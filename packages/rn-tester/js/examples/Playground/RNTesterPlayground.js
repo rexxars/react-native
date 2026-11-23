@@ -23,14 +23,19 @@ function Playground() {
 
   useEffect(() => {
     let requestId: ?number = null;
+    let bytes = 0;
     const subscription = Networking.addListener(
       'didReceiveNetworkIncrementalData',
       ([id, , progress]) => {
         if (id === requestId) {
-          setReceived(progress);
+          bytes = progress;
         }
       },
     );
+
+    // Update the counter every 10 seconds, not on every event. Rendering on every event creates
+    // enough short-lived garbage to hide the memory growth that this reproducer is about.
+    const interval = setInterval(() => setReceived(bytes), 10_000);
 
     // An incremental text request, the same as XMLHttpRequest sends when it has a `progress`
     // listener. JavaScript keeps none of the response here.
@@ -50,6 +55,7 @@ function Playground() {
     );
 
     return () => {
+      clearInterval(interval);
       subscription.remove();
       if (requestId != null) {
         Networking.abortRequest(requestId);
